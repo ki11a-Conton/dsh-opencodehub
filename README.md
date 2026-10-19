@@ -218,8 +218,23 @@ pnpm add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
 
 ### 从 Release 压缩包装
 
-下载 [v0.1.2 的 zip](https://github.com/ki11a-Conton/dsh-opencodehub/releases)，解压到任意目录，
-然后按上面的「从本地目录装」把 `file:` 路径指过去。
+下载 [v0.1.2 的 zip](https://github.com/ki11a-Conton/dsh-opencodehub/releases)，解压到任意目录。
+解压后会得到一个 `dsh-opencodehub\` 文件夹（里面是 `lib/`、`package.json`、`cordis.patch.yml`）。
+
+**`file:` 路径要指向这个子文件夹，不是它的父目录**：
+
+```jsonc
+// profile 的 package.json
+"dependencies": {
+  "dsh-opencodehub": "file:D:/你的解压路径/dsh-opencodehub"
+}
+```
+
+`dsh.profile.bundles` 里加 `"dsh-opencodehub"`，`pnpm install --dir <profile 目录>`，重启 DSH。
+
+> 2026-10-19 之前上传的 zip 是扁平结构（`index.js` 直接在根目录），装完会找不到
+> `lib/index.js` 而失败。现已替换为正确结构，如果你手上的包解压后根目录就有 `index.js`，
+> 请重新下载。
 
 > **为什么装完要重启**：DSH 的补丁层（`cordis.patch.yml`）和 bundle 列表在启动时合成，
 > 不支持热更新。插件代码本身有热重载能力，但**首次注册**（让 `opencodehub` 出现在模型目录里）
