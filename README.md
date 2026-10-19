@@ -6,24 +6,44 @@
 
 **不需要 API key**——Zen 免费档用 `Authorization: Bearer public`，插件已内置。
 
+**装完即用**：`dsh plugin --profile desktop add dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub`
+→ 重启 DSH → 直接说话。插件的补丁层会自动把新会话默认模型指向 Zen 免费模型，**不用改任何配置文件**。
+
 ---
 
-## 一、装好之后怎么用
+## 一、装好之后怎么用（不用改任何配置）
 
-插件装好并重启 DSH 之后，`opencodehub` 就是 DSH 里的一个普通模型提供方，和内置的 DeepSeek、你配的
-cliproxyapi / chatgpt2api 等**完全平级**。用起来有三种方式：
+**装完 + 重启 DSH，直接就能用。** 本插件的 bundle 补丁层已经把「新会话默认模型」指向了
+Zen 免费模型（`opencodehub` / `beam-free`），你不需要手动编辑任何 YAML。
 
-### 方式 1：在对话里临时切换（最常用）
+所以最短路径就是：
+
+1. 装插件（见 [四、安装](#四安装)）
+2. 重启 DSH
+3. 随便开个对话，说一句「你好」
+
+能出字，就说明整条链路已经通了。**不需要 API key**，也不需要配模型。
+
+> 这一行默认模型写在插件的 bundle 补丁里（`cordis.patch.yml` 的 `agent-default-model`），
+> 属于**最低优先级层**：你在 profile 补丁层里写同样的 id 就会覆盖它。
+> 想换模型或恢复 DSH 官方默认，见下面「方式 3」。
+
+### 方式 1：就这么用（默认已经是 Zen 免费模型）
+
+DSH 启动后，新会话的模型就是 `opencodehub/beam-free`。直接说话即可。
+
+### 方式 2：换成别的 Zen 免费模型
 
 **① 点输入框的模型座位**
-聊天输入框旁边显示当前模型的地方，点开就是模型选择器。
+聊天输入框旁边显示当前模型的地方（形如 `Beam (free)`），点开就是模型选择器。
 
 **② 或者敲 `/model`**
 在输入框里输入 `/`，命令面板会列出可用命令，选 **模型 / Model**（描述是「选择本会话使用的模型」）。
 也可以直接输入 `/model` 回车。
 
 **③ 在弹出的列表里找 `OpenCode Zen (free tier)` 分组**
-分组名就是提供方名字，展开后有 10 个免费模型：
+分组名就是提供方名字，展开后是这些免费模型（前 10 个是插件内置目录，
+其余是运行时从 Zen 目录接口发现、自动并入的）：
 
 | 模型 ID | 显示名 |
 | --- | --- |
@@ -35,40 +55,51 @@ cliproxyapi / chatgpt2api 等**完全平级**。用起来有三种方式：
 | `nemotron-3.5-super-vl-free` | Nemotron 3.5 Super VL (free) |
 | `longcat-2.5-preview-free` | LongCat 2.5 Preview (free) |
 | `space-bunny-free` | Space Bunny (free) |
-| `beam-free` | Beam (free) |
+| `beam-free` | Beam (free) ← 默认 |
 | `glm-5.3-flash-free` | GLM 5.3 Flash (free) |
+| `minimax-m3.1-flash-free` | Minimax M3.1 Flash (free) ← 目录发现 |
 
 列表里的模型总数超过 4 个时，顶部会出现搜索框（占位符「搜索模型…」），
-输入 `zen`、`glm`、`beam` 之类能直接筛。
+输入 `glm`、`beam`、`minimax` 之类能直接筛。
 
 **④ 选中即刻生效**
-只影响**当前这个会话**，之后的每条消息都走 Zen 免费层。开新会话会回到默认模型。
+只影响**当前这个会话**，之后的每条消息都走 Zen 免费层。开新会话会回到默认模型
+（也就是 `beam-free`；想让某个模型变成永久默认，见下一小节）。
 
 > 菜单里**没有「推理等级 / Effort」这一项**是正常的：本插件注册的模型不声明 `reasoning` 能力
 > （Zen 免费档不暴露可选推理档位），DSH 只在模型声明了档位时才显示该子菜单。模型仍然会输出
 > 推理内容（`reasoning_content` → DSH 的 reasoning 块），只是不能由你选档位。
 
-### 方式 2：设成默认模型（所有新会话都用它）
+### 方式 3：改默认模型 / 恢复官方默认
 
-编辑你的 profile 补丁层（默认是 `C:\Users\MECHREV\.dsh\profiles\desktop\cordis.patch.yml`），
-找到 `agent-default-model` 这一段，把 `provider` / `model` 改成：
+模型选择器**只影响当前会话**，DSH 的模型菜单里没有「设为默认」按钮（截至 0.2.x）。
+要让新会话永久用某个模型，得改 profile 补丁层
+（`C:\Users\MECHREV\.dsh\profiles\desktop\cordis.patch.yml`），加这么一段：
 
 ```yaml
+# 换成别的 Zen 免费模型
 - id: agent-default-model
   name: "@deepseek-ai/dsh-agent-default-model"
   config:
     provider: opencodehub
-    model: beam-free          # 换成上表里任意一个模型 ID
+    model: glm-5.3-flash-free
 ```
 
-改完**重启 DSH**（补丁层不支持热更新）。之后所有新会话默认走 Zen 免费层。
+```yaml
+# 或者：恢复 DSH 官方默认（等于关掉本插件的默认模型接管）
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: deepseek-official
+    model: deepseek-flash
+```
 
-想换回去就把 `provider` 改回原来的（比如 `cliproxyapi`）。
+改完**重启 DSH**（补丁层不支持热更新）。
 
-### 方式 3：在对话里用自然语言指定
+### 方式 4：在对话里用自然语言指定
 
 ```
-用 opencodehub 的 glm-5.3-flash-free 回答这个问题：……
+用 glm-5.3-flash-free 回答这个问题：……
 ```
 
 ```
@@ -79,8 +110,8 @@ cliproxyapi / chatgpt2api 等**完全平级**。用起来有三种方式：
 
 ### 怎么确认真的通了
 
-选一个模型，发一句「你好」。**能出字就是通了**。想更确定，就问它一句「你是什么模型」，
-免费档模型通常能报出自己。
+默认就是 Zen 免费模型，所以**发一句「你好」，能出字就是通了**。想更确定，就问它
+「你是什么模型」，免费档模型通常能报出自己。
 
 如果**模型选择器里根本看不到 `OpenCode Zen` 分组**，按顺序排查：
 
@@ -88,6 +119,10 @@ cliproxyapi / chatgpt2api 等**完全平级**。用起来有三种方式：
    （预期 `phase=active`）。
 2. 是否重启过 DSH（首次安装后必须重启一次）。
 3. 分组标题旁边如果显示「加载失败：…」，那是网络问题——看下一节「代理」。
+
+如果**能选模型但一说话就报 `MISSING_CREDENTIAL`**，说明默认模型那一行没生效
+（例如你的 profile 补丁层里也写了 `agent-default-model` 且指向 `deepseek-official`）——
+profile 层优先级更高，改掉它即可。
 
 ---
 
@@ -142,7 +177,8 @@ OpenCode Zen 按**出口 IP 地址段**判断是不是「在 OpenCode 里调用�
 
 ### ✅ 能用
 
-- **文本对话**：全部 10 个模型，上下文 **262,144** tokens，最大输出 **32,768** tokens
+- **文本对话**：内置 10 个免费模型 + 运行时目录发现的（实测当前共 11 个），
+  上下文 **262,144** tokens，最大输出 **32,768** tokens
 - **推理内容**：模型输出的 `reasoning_content` 会作为 DSH 的 reasoning 块正常显示
 - **工具调用**：DSH 的文件读取（`read`）、写文件（`write`）、编辑（`edit`）、跑命令（`bash`）
   这些工具可用。DSH 内部工具名本来就是小写，插件的改名表按**大小写不敏感**匹配，
@@ -168,7 +204,7 @@ Zen 免费档要求**每次请求的 tools 数组里必须含小写 `read`**，�
 
 ### ❌ 不能用
 
-- **图片输入**：适配器声明的输入模态是 `['text']`（Zen 免费档这 10 个模型都不保证视觉能力）
+- **图片输入**：适配器声明的输入模态是 `['text']`（Zen 免费档这些模型都不保证视觉能力）
 - **选推理等级**：见上文，菜单里没有这一项
 - **非 `read`/`bash` 工具的可用性无保证**：Zen 门禁只校验这两个名字是否**存在**，
   其余工具名原样透传给上游，上游是否真的执行它们（web 搜索、MCP 工具等）本插件
@@ -180,15 +216,31 @@ Zen 免费档要求**每次请求的 tools 数组里必须含小写 `read`**，�
 
 ## 四、安装
 
-### 从 GitHub 装
+**一条命令，装完重启就完事。** 不需要手改 `package.json`，不需要手改 `bundles`——
+DSH 在 `dsh plugin add` 成功后会自动把声明了 `dsh.bundle.patch` 的新依赖追加进
+`dsh.profile.bundles`，插件因此自动生效。
 
-```bash
-# 1. 装进 profile
+### 方式 A：`dsh plugin`（推荐）
+
+```powershell
+dsh plugin --profile desktop add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
+```
+
+把 `desktop` 换成你自己的 profile 名（`dsh web` 用 `web`，桌面端用 `desktop`）。
+然后**重启 DSH**。搞定。
+
+> 首次装 GitHub 源会慢（实测约 2 分钟，pnpm 要拉 tarball），耐心等。
+
+### 方式 B：在 profile 目录里直接 pnpm
+
+```powershell
 cd C:\Users\MECHREV\.dsh\profiles\desktop
 pnpm add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
 ```
 
-然后在 profile 的 `package.json` 里，把 `"dsh-opencodehub"` 加进 `dsh.profile.bundles` 数组：
+效果和方式 A 相同（`dsh plugin` 就是转发给 pnpm 并顺手 reconcile bundles）。
+如果你绕开 `dsh plugin` 用了别的包管理器，才需要手动把 `"dsh-opencodehub"` 加进
+`package.json` 的 `dsh.profile.bundles` 数组：
 
 ```jsonc
 "dsh": {
@@ -197,48 +249,48 @@ pnpm add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
       "@deepseek-ai/dsh-base",
       "@deepseek-ai/dsh-web-app",
       // ...
-      "dsh-opencodehub"        // ← 加这一行
+      "dsh-opencodehub"        // ← 只有手动装时才需要加这一行
     ]
   }
 }
 ```
 
-重启 DSH。
+### 方式 C：从 Release 压缩包装
 
-### 从本地目录装（开发用）
-
-```jsonc
-// profile 的 package.json
-"dependencies": {
-  "dsh-opencodehub": "file:D:/Download games/dsh插件/dsh-opencodehub"
-}
-```
-
-`dsh.profile.bundles` 里同样加 `"dsh-opencodehub"`，然后 `pnpm install --dir <profile 目录>`，重启 DSH。
-
-### 从 Release 压缩包装
-
-下载 [v0.1.2 的 zip](https://github.com/ki11a-Conton/dsh-opencodehub/releases)，解压到任意目录。
+下载 [最新 Release 的 zip](https://github.com/ki11a-Conton/dsh-opencodehub/releases)，解压到任意目录。
 解压后会得到一个 `dsh-opencodehub\` 文件夹（里面是 `lib/`、`package.json`、`cordis.patch.yml`）。
 
 **`file:` 路径要指向这个子文件夹，不是它的父目录**：
 
-```jsonc
-// profile 的 package.json
-"dependencies": {
-  "dsh-opencodehub": "file:D:/你的解压路径/dsh-opencodehub"
-}
+```powershell
+dsh plugin --profile desktop add "file:D:/你的解压路径/dsh-opencodehub"
 ```
-
-`dsh.profile.bundles` 里加 `"dsh-opencodehub"`，`pnpm install --dir <profile 目录>`，重启 DSH。
 
 > 2026-10-19 之前上传的 zip 是扁平结构（`index.js` 直接在根目录），装完会找不到
 > `lib/index.js` 而失败。现已替换为正确结构，如果你手上的包解压后根目录就有 `index.js`，
 > 请重新下载。
 
-> **为什么装完要重启**：DSH 的补丁层（`cordis.patch.yml`）和 bundle 列表在启动时合成，
-> 不支持热更新。插件代码本身有热重载能力，但**首次注册**（让 `opencodehub` 出现在模型目录里）
-> 必须重启一次。
+### 方式 D：从本地目录装（开发用）
+
+```powershell
+dsh plugin --profile desktop add "file:D:/Download games/dsh插件/dsh-opencodehub"
+```
+
+### 装完要不要重启？
+
+**要，且只需一次。** DSH 的补丁层（`cordis.patch.yml`）和 bundle 列表在启动时合成，
+不支持热更新。插件代码本身有热重载能力，但**首次注册**（让 `opencodehub` 出现在模型目录里、
+并让默认模型那一行生效）必须重启一次。
+
+### 卸载
+
+```powershell
+dsh plugin --profile desktop remove dsh-opencodehub
+```
+
+`dsh plugin` 会同时把它从 `dsh.profile.bundles` 里摘掉；重启后 `opencodehub` 分组消失，
+默认模型回落到 DSH 官方。如果你的 profile 补丁层里手写过 `agent-default-model`
+指向 `opencodehub`，记得一并删掉，否则新会话会因为找不到提供方而失败。
 
 ---
 
@@ -282,6 +334,10 @@ pnpm add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
   类型标记；`proxy: direct` 写死直连时不做任何代理尝试。挂起到期自动恢复走代理。
 - **模型目录**（models.go）：静态注册 10 个免费模型 + 惰性拉取 `/zen/v1/models`（只增不减、
   排除退役名单），上下文 262144 / 默认输出 32768。
+- **装完即用**（DSH 侧新增，无 Go 对应物）：bundle 补丁层把 `agent-default-model` 指向
+  `opencodehub` / `beam-free`，新会话默认走 Zen 免费层，无需用户手改 YAML。这是本插件
+  相对上游的**功能增强**——上游是独立网关进程，路由由 CPA 配置决定；在 DSH 里必须靠补丁层
+  才能做到「装上就能用」。
 - **错误语义**：200 包错误对象、聚合不出内容、无 finish 的流均映射为带稳定 code 的 LlmError
   （AUTH/RATE_LIMIT/SERVER/TIMEOUT/TRANSPORT/EMPTY_RESPONSE…）。
 
@@ -317,6 +373,10 @@ node test/smoke3.mjs
 
 ## 变更记录
 
+- **0.1.3（装完即用）**：bundle 补丁层新增 `agent-default-model` 覆盖，新会话默认走
+  `opencodehub/beam-free`——装完插件 + 重启 DSH 即可直接对话，不需要手改任何 YAML。
+  实测验证：全新 profile 里 `dsh plugin add` 后 `--dump-config` 显示默认模型已变为
+  `opencodehub/beam-free`，headless 一次性问答返回正常（无任何凭据、无任何手改）。
 - **0.1.2（对齐上游 1e7eed54）**：出口被拒时自愈——403 FreeTierError 挂起代理 10 分钟改直连
   （无退避立即重试）；代理拨号失败挂起 5 分钟；目录拉取共享同一出口决策；`egressLabel()` 对应
   Go `transportLabel`。版本号 `0.1.0` → `0.1.2`。新增 `test/smoke3.mjs`。

@@ -1,7 +1,29 @@
 # dsh-opencodehub：把 OpenCode Zen 免费层接入 DeepSeek Harness
 #
-# loader 从 profile 的 node_modules 里按 name 解析本包（name 必须等于包名）。
-# 不写 config 键：默认值全部在 Config schema 里给（含代理默认 127.0.0.1:7897）。
+# 这是本插件的 bundle 补丁层。DSH 的补丁顺序是：
+#   dsh-base 等基础 bundle → 本 bundle → 你自己的 profile cordis.patch.yml → CLI --patch
+# 所以这里写的东西都能被你 profile 层的一行覆盖，不会被写死。
+
+# 1) 注册适配器行。loader 从 profile 的 node_modules 里按 name 解析本包
+#    （name 必须等于包名）。不写 config 键：默认值全部在 Config schema 里给
+#    （含代理默认 127.0.0.1:7897、baseUrl https://opencode.ai/zen）。
 - insert:
     - id: 'dsh-opencodehub'
       name: 'dsh-opencodehub'
+
+# 2) 装完即用：把「新会话默认模型」指向 Zen 免费模型。
+#    没有这一行的话，装完插件只是让模型出现在选择器里，默认仍是
+#    dsh-base 的 deepseek-official/deepseek-flash，新用户点开对话会先失败一次。
+#
+#    这是 bundle 层，优先级低于你自己的 profile 层：
+#    - 你在模型选择器里「设为默认」→ 写进 profile 的 cordis.patch.yml → 永远赢过这里；
+#    - 你手改 profile 的 cordis.patch.yml → 同样赢过这里。
+#    想彻底恢复官方默认，在 profile 的 cordis.patch.yml 里写：
+#      - id: agent-default-model
+#        config: { provider: deepseek-official, model: deepseek-flash }
+#    或者干脆删掉本行（改完重启 DSH 生效）。
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: opencodehub
+    model: beam-free
