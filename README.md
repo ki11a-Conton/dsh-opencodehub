@@ -2,7 +2,7 @@
 
 把 CLIProxyAPI 的 [opencodehub](https://github.com/ki11a-Conton/opencodehub) 插件移植为 **DeepSeek Harness（DSH）**
 的 LLM 适配器插件：直连 **OpenCode Zen 免费层**（`https://opencode.ai/zen/v1/chat/completions`），在 DSH 里注册为一个名为
-`opencodehub` 的模型提供方。当前对齐上游 **0.1.2**（出口自愈）。
+`opencodehub` 的模型提供方。当前对齐上游 **0.1.2**（出口自愈），DSH 侧版本 **0.1.3**（装完即用）。
 
 **不需要 API key**——Zen 免费档用 `Authorization: Bearer public`，插件已内置。
 
