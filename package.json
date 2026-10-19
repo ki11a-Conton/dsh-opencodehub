@@ -1,6 +1,6 @@
 {
   "name": "dsh-opencodehub",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "DSH LLM adapter plugin for the OpenCode Zen free tier: gates, tool mapping, forced SSE, retry, proxy.",
   "type": "module",
   "main": "./lib/index.js",

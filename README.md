@@ -2,12 +2,26 @@
 
 把 CLIProxyAPI 的 [opencodehub](https://github.com/ki11a-Conton/opencodehub) 插件移植为 **DeepSeek Harness（DSH）**
 的 LLM 适配器插件：直连 **OpenCode Zen 免费层**（`https://opencode.ai/zen/v1/chat/completions`），在 DSH 里注册为一个名为
-`opencodehub` 的模型提供方。当前对齐上游 **0.1.2**（出口自愈），DSH 侧版本 **0.1.3**（装完即用）。
+`opencodehub` 的模型提供方。当前对齐上游 **0.1.2**（出口自愈），DSH 侧版本 **0.1.4**（图形化安装）。
 
 **不需要 API key**——Zen 免费档用 `Authorization: Bearer public`，插件已内置。
 
-**装完即用**：`dsh plugin --profile desktop add dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub`
-→ 重启 DSH → 直接说话。插件的补丁层会自动把新会话默认模型指向 Zen 免费模型，**不用改任何配置文件**。
+## 三步装好，直接说话（不用敲命令行）
+
+1. **打开 DSH 左侧边栏的「插件」页** → 右上角 **「添加插件」**。
+2. 输入框里粘这一行，点 **「安装」**：
+
+   ```
+   https://github.com/ki11a-Conton/dsh-opencodehub
+   ```
+
+3. 装完按提示 **重启 DSH**。之后随便开个对话说句「你好」就能出字。
+
+> 不用改任何 YAML、不用配模型、不用 API key：插件的补丁层会自动把新会话默认模型
+> 指向 Zen 免费模型（`opencodehub` / `beam-free`）。
+>
+> 也支持 `github:ki11a-Conton/dsh-opencodehub` 这种简写，两种写法都实测可装。
+> 想用命令行装的话见 [四、安装](#四安装)。
 
 ---
 
@@ -216,31 +230,81 @@ Zen 免费档要求**每次请求的 tools 数组里必须含小写 `read`**，�
 
 ## 四、安装
 
-**一条命令，装完重启就完事。** 不需要手改 `package.json`，不需要手改 `bundles`——
-DSH 在 `dsh plugin add` 成功后会自动把声明了 `dsh.bundle.patch` 的新依赖追加进
-`dsh.profile.bundles`，插件因此自动生效。
+四种方式，**A 是给普通用户的**，B/C/D 给命令行用户和开发者。
+不管哪种，装完都只需**重启 DSH 一次**。
 
-### 方式 A：`dsh plugin`（推荐）
+### 方式 A：DSH 图形界面（推荐，不用命令行）
+
+1. 打开 DSH **左侧边栏 → 「插件」**（面板名「插件」，说明「安装、启用和配置插件」）。
+2. 点右上角 **「添加插件」**。
+3. 在「包名或地址」输入框里粘这一行：
+
+   ```
+   https://github.com/ki11a-Conton/dsh-opencodehub
+   ```
+
+   也接受 `github:ki11a-Conton/dsh-opencodehub` 这种简写。
+   **不要**只填 `dsh-opencodehub`——本插件还没发布到 npm，只填包名会提示「未找到相关插件」。
+4. 点 **「安装」**，等它跑完（首次要从 GitHub 拉包，实测 25 秒～2 分钟，取决于网络）。
+5. 出现「已安装，请重启 DSH 加载它」后，**重启 DSH**。
+
+> 界面里这个输入框认三类东西：npm 包名、Git 仓库地址（`https://github.com/作者/仓库`、
+> `github:作者/仓库`、`git+https://…`）、以及本机绝对路径（`D:/某个目录`）。
+>
+> 装的时候如果报「无法连接 GitHub」，是因为 GitHub 直连不通——这个走的是本机网络/代理，
+> 和插件运行时的 `proxy` 配置**是两回事**。可以先把系统代理开起来再装，或改用方式 C 的 zip。
+
+### 方式 B：命令行 `dsh plugin`（等价于方式 A）
+
+`dsh` 命令**默认不在 PATH 上**（桌面端安装版不写 PATH）。用 DSH 安装目录里的 `dsh.cmd`：
 
 ```powershell
-dsh plugin --profile desktop add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
+# 桌面端默认装在 D:\666desktop；换成你自己的安装目录
+& "D:\666desktop\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add `
+    "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
 ```
 
-把 `desktop` 换成你自己的 profile 名（`dsh web` 用 `web`，桌面端用 `desktop`）。
-然后**重启 DSH**。搞定。
+- `--profile desktop` 是桌面端 profile 名；`dsh web` 起的服务用 `web`。
+- 不知道安装目录？任务管理器里找到 `DeepSeek Harness.exe` → 右键「打开文件所在位置」，
+  然后在 `resources\runtime\cli\bin\` 里就有 `dsh.cmd`。
+- 装完**重启 DSH**。
 
-> 首次装 GitHub 源会慢（实测约 2 分钟，pnpm 要拉 tarball），耐心等。
+> 如果 `dsh` 恰好在你的 PATH 上，直接 `dsh plugin --profile desktop add …` 也一样。
 
-### 方式 B：在 profile 目录里直接 pnpm
+### 方式 C：从 Release 压缩包（适合网络受限 / 离线）
+
+1. 下载 [最新 Release 的 zip](https://github.com/ki11a-Conton/dsh-opencodehub/releases)。
+2. 解压到任意目录，会得到一个 `dsh-opencodehub\` 文件夹
+   （里面有 `lib/`、`package.json`、`cordis.patch.yml`）。
+3. 用图形界面装：**插件页 → 添加插件 → 把解压出来的文件夹绝对路径粘进去**，
+   例如 `D:/Download games/dsh插件/dsh-opencodehub`。
+   或者命令行：
+
+   ```powershell
+   & "D:\666desktop\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add `
+       "file:D:/你的解压路径/dsh-opencodehub"
+   ```
+
+**路径要指向 `dsh-opencodehub` 这个子文件夹，不是它的父目录**——指错会报
+「该路径不存在或不是有效的插件包」。
+
+> 2026-10-19 之前上传的 zip 是扁平结构（`index.js` 直接在根目录），装完会找不到
+> `lib/index.js` 而失败。现已替换为正确结构；如果你解压后根目录就有 `index.js`，请重新下载。
+
+### 方式 D：从本机源码目录装（开发用）
 
 ```powershell
-cd C:\Users\MECHREV\.dsh\profiles\desktop
-pnpm add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
+& "D:\666desktop\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add `
+    "file:D:/Download games/dsh插件/dsh-opencodehub"
 ```
 
-效果和方式 A 相同（`dsh plugin` 就是转发给 pnpm 并顺手 reconcile bundles）。
-如果你绕开 `dsh plugin` 用了别的包管理器，才需要手动把 `"dsh-opencodehub"` 加进
-`package.json` 的 `dsh.profile.bundles` 数组：
+### 为什么不用手改 `bundles`
+
+`package.json` 里声明了 `dsh.bundle.patch`，所以**装成功后 DSH 会自动把 `dsh-opencodehub`
+追加进 profile 的 `dsh.profile.bundles`**，插件因此自动生效——图形界面装、命令行装都一样。
+
+只有一种情况要手改：你用别的包管理器（绕开 `dsh plugin` / 插件页）直接把包塞进 profile 的
+`node_modules`，那就得自己在 `C:\Users\MECHREV\.dsh\profiles\desktop\package.json` 里补：
 
 ```jsonc
 "dsh": {
@@ -255,27 +319,6 @@ pnpm add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
 }
 ```
 
-### 方式 C：从 Release 压缩包装
-
-下载 [最新 Release 的 zip](https://github.com/ki11a-Conton/dsh-opencodehub/releases)，解压到任意目录。
-解压后会得到一个 `dsh-opencodehub\` 文件夹（里面是 `lib/`、`package.json`、`cordis.patch.yml`）。
-
-**`file:` 路径要指向这个子文件夹，不是它的父目录**：
-
-```powershell
-dsh plugin --profile desktop add "file:D:/你的解压路径/dsh-opencodehub"
-```
-
-> 2026-10-19 之前上传的 zip 是扁平结构（`index.js` 直接在根目录），装完会找不到
-> `lib/index.js` 而失败。现已替换为正确结构，如果你手上的包解压后根目录就有 `index.js`，
-> 请重新下载。
-
-### 方式 D：从本地目录装（开发用）
-
-```powershell
-dsh plugin --profile desktop add "file:D:/Download games/dsh插件/dsh-opencodehub"
-```
-
 ### 装完要不要重启？
 
 **要，且只需一次。** DSH 的补丁层（`cordis.patch.yml`）和 bundle 列表在启动时合成，
@@ -284,11 +327,15 @@ dsh plugin --profile desktop add "file:D:/Download games/dsh插件/dsh-opencodeh
 
 ### 卸载
 
+图形界面：**插件页 → 已安装 → 找到 dsh-opencodehub → 卸载**，然后重启 DSH。
+
+命令行：
+
 ```powershell
-dsh plugin --profile desktop remove dsh-opencodehub
+& "D:\666desktop\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-opencodehub
 ```
 
-`dsh plugin` 会同时把它从 `dsh.profile.bundles` 里摘掉；重启后 `opencodehub` 分组消失，
+两种方式都会把它从 `dsh.profile.bundles` 里摘掉；重启后 `opencodehub` 分组消失，
 默认模型回落到 DSH 官方。如果你的 profile 补丁层里手写过 `agent-default-model`
 指向 `opencodehub`，记得一并删掉，否则新会话会因为找不到提供方而失败。
 
@@ -373,6 +420,12 @@ node test/smoke3.mjs
 
 ## 变更记录
 
+- **0.1.4（图形化安装）**：README 安装章节改为「DSH 插件页 → 添加插件 → 粘 GitHub 地址」优先，
+  不再要求用户敲 `dsh` 命令（桌面端安装版并不把 `dsh` 写进 PATH）；命令行方式改成显式调用
+  `resources\runtime\cli\bin\dsh.cmd`。补丁内容与 0.1.3 相同，**功能无变化，只是文档与版本号**。
+  实测验证：图形界面输入框认的两类写法（`https://github.com/ki11a-Conton/dsh-opencodehub`、
+  `github:ki11a-Conton/dsh-opencodehub`）在全新 profile 里都能装成并自动写入
+  `dsh.profile.bundles`，`--dump-config` 显示默认模型为 `opencodehub/beam-free`。
 - **0.1.3（装完即用）**：bundle 补丁层新增 `agent-default-model` 覆盖，新会话默认走
   `opencodehub/beam-free`——装完插件 + 重启 DSH 即可直接对话，不需要手改任何 YAML。
   实测验证：全新 profile 里 `dsh plugin add` 后 `--dump-config` 显示默认模型已变为
