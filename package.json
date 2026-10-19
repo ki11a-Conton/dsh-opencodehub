@@ -1,0 +1,40 @@
+{
+  "name": "dsh-opencodehub",
+  "version": "0.1.2",
+  "description": "DSH LLM adapter plugin for the OpenCode Zen free tier: gates, tool mapping, forced SSE, retry, proxy.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "llm-adapter",
+    "opencode-zen"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20",
+    "dsh": "^0.1.7-rc.1 || ^0.2.0-rc.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/schemastery": "^3.18.3"
+  },
+  "dependencies": {
+    "undici": "^7.30.1"
+  }
+}

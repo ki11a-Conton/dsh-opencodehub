@@ -1,0 +1,7 @@
+# dsh-opencodehub：把 OpenCode Zen 免费层接入 DeepSeek Harness
+#
+# loader 从 profile 的 node_modules 里按 name 解析本包（name 必须等于包名）。
+# 不写 config 键：默认值全部在 Config schema 里给（含代理默认 127.0.0.1:7897）。
+- insert:
+    - id: 'dsh-opencodehub'
+      name: 'dsh-opencodehub'
