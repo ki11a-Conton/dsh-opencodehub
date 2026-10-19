@@ -1,25 +1,235 @@
 # dsh-opencodehub
 
-把 CLIProxyAPI 的 opencodehub 插件移植为 DeepSeek Harness（DSH）的 LLM 适配器插件：
-直连 OpenCode Zen 免费层（`https://opencode.ai/zen/v1/chat/completions`），在 DSH 里注册为一个名为
+把 CLIProxyAPI 的 [opencodehub](https://github.com/ki11a-Conton/opencodehub) 插件移植为 **DeepSeek Harness（DSH）**
+的 LLM 适配器插件：直连 **OpenCode Zen 免费层**（`https://opencode.ai/zen/v1/chat/completions`），在 DSH 里注册为一个名为
 `opencodehub` 的模型提供方。当前对齐上游 **0.1.2**（出口自愈）。
 
-## 安装（已完成的部分见下方「本机状态」）
+**不需要 API key**——Zen 免费档用 `Authorization: Bearer public`，插件已内置。
 
-1. 依赖装进 DSH profile（`file:` 协议指向本目录）：
+---
 
-   ```jsonc
-   // C:\Users\MECHREV\.dsh\profiles\desktop\package.json
-   "dependencies": { "dsh-opencodehub": "file:D:/Download games/dsh插件/dsh-opencodehub" }
-   // dsh.profile.bundles 数组里加 "dsh-opencodehub"
-   ```
+## 一、装好之后怎么用
 
-   然后 `pnpm install --dir <profile 目录>`。
+插件装好并重启 DSH 之后，`opencodehub` 就是 DSH 里的一个普通模型提供方，和内置的 DeepSeek、你配的
+cliproxyapi / chatgpt2api 等**完全平级**。用起来有三种方式：
 
-2. 重启 DSH。插件 `apply()` 会执行 `ctx.llm.registerAdapter(['opencodehub'], adapter)`，
-   GUI 模型选择器里出现「OpenCode Zen (free tier)」提供方与 10 个内置模型。
+### 方式 1：在对话里临时切换（最常用）
 
-## 配置（Config，全部有默认值，零配置可用）
+**① 点输入框的模型座位**
+聊天输入框旁边显示当前模型的地方，点开就是模型选择器。
+
+**② 或者敲 `/model`**
+在输入框里输入 `/`，命令面板会列出可用命令，选 **模型 / Model**（描述是「选择本会话使用的模型」）。
+也可以直接输入 `/model` 回车。
+
+**③ 在弹出的列表里找 `OpenCode Zen (free tier)` 分组**
+分组名就是提供方名字，展开后有 10 个免费模型：
+
+| 模型 ID | 显示名 |
+| --- | --- |
+| `big-pickle` | Big Pickle |
+| `cat-jam-free` | Cat Jam (free) |
+| `mimo-v2.6-flash-free` | MiMo v2.6 Flash (free) |
+| `deepseek-v4.1-flash-free` | DeepSeek v4.1 Flash (free) |
+| `nemotron-3.5-lightning-free` | Nemotron 3.5 Lightning (free) |
+| `nemotron-3.5-super-vl-free` | Nemotron 3.5 Super VL (free) |
+| `longcat-2.5-preview-free` | LongCat 2.5 Preview (free) |
+| `space-bunny-free` | Space Bunny (free) |
+| `beam-free` | Beam (free) |
+| `glm-5.3-flash-free` | GLM 5.3 Flash (free) |
+
+列表里的模型总数超过 4 个时，顶部会出现搜索框（占位符「搜索模型…」），
+输入 `zen`、`glm`、`beam` 之类能直接筛。
+
+**④ 选中即刻生效**
+只影响**当前这个会话**，之后的每条消息都走 Zen 免费层。开新会话会回到默认模型。
+
+> 菜单里**没有「推理等级 / Effort」这一项**是正常的：本插件注册的模型不声明 `reasoning` 能力
+> （Zen 免费档不暴露可选推理档位），DSH 只在模型声明了档位时才显示该子菜单。模型仍然会输出
+> 推理内容（`reasoning_content` → DSH 的 reasoning 块），只是不能由你选档位。
+
+### 方式 2：设成默认模型（所有新会话都用它）
+
+编辑你的 profile 补丁层（默认是 `C:\Users\MECHREV\.dsh\profiles\desktop\cordis.patch.yml`），
+找到 `agent-default-model` 这一段，把 `provider` / `model` 改成：
+
+```yaml
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: opencodehub
+    model: beam-free          # 换成上表里任意一个模型 ID
+```
+
+改完**重启 DSH**（补丁层不支持热更新）。之后所有新会话默认走 Zen 免费层。
+
+想换回去就把 `provider` 改回原来的（比如 `cliproxyapi`）。
+
+### 方式 3：在对话里用自然语言指定
+
+```
+用 opencodehub 的 glm-5.3-flash-free 回答这个问题：……
+```
+
+```
+切到 beam-free，然后帮我看看这个文件
+```
+
+模型能通过 DSH 的工具拿到可用模型列表，会自己切。
+
+### 怎么确认真的通了
+
+选一个模型，发一句「你好」。**能出字就是通了**。想更确定，就问它一句「你是什么模型」，
+免费档模型通常能报出自己。
+
+如果**模型选择器里根本看不到 `OpenCode Zen` 分组**，按顺序排查：
+
+1. 插件是否加载：在 DSH 里问「dsh-opencodehub 插件加载了吗」，或用插件调试工具查
+   （预期 `phase=active`）。
+2. 是否重启过 DSH（首次安装后必须重启一次）。
+3. 分组标题旁边如果显示「加载失败：…」，那是网络问题——看下一节「代理」。
+
+---
+
+## 二、代理（大概率你需要它）
+
+OpenCode Zen 按**出口 IP 地址段**判断是不是「在 OpenCode 里调用」：
+
+- **家庭宽带出口** → 正常返回 200
+- **机房 / VPS / 云主机出口** → `403 FreeTierError`
+
+插件的默认配置走 `http://127.0.0.1:7897`（Clash / mihomo 的默认混合端口）。
+**如果你的 Clash 用的是别的端口，或者没开代理，就要改这一项。**
+
+### 改成别的端口
+
+在 profile 补丁层里给插件加一段 config。**只写你要改的那个键就够了**——补丁层是「整体替换」，
+但没写的键会被 Schemastery 按 schema 的 `.default()` 补齐，不需要把 8 个键都抄一遍：
+
+```yaml
+- id: dsh-opencodehub
+  name: 'dsh-opencodehub'
+  config:
+    proxy: http://127.0.0.1:7890    # 改成你 Clash 的混合端口
+```
+
+### 直连（不走代理）
+
+```yaml
+- id: dsh-opencodehub
+  name: 'dsh-opencodehub'
+  config:
+    proxy: direct                   # direct / none / off 都表示直连
+```
+
+### 出口自愈（0.1.2，不用你管）
+
+插件自己会处理这几种情况，**不需要手动干预**：
+
+| 情况 | 插件行为 |
+| --- | --- |
+| 走代理仍被拒（403 `FreeTierError`） | 挂起代理 **10 分钟**，下一次尝试**无退避立即改直连** |
+| 代理拨号失败（Clash 没开 / 端口错） | 挂起代理 **5 分钟**，同样改直连 |
+| 挂起到期 | 自动恢复走代理 |
+
+两种 403 措辞（`only from within OpenCode` / `abusive traffic from this IP`）都识别，
+判据只看响应体的 `FreeTierError` 类型标记。`proxy: direct` 写死时**完全不碰代理**，
+挂起状态也不影响你。
+
+---
+
+## 三、能用什么、不能用什么
+
+### ✅ 能用
+
+- **文本对话**：全部 10 个模型，上下文 **262,144** tokens，最大输出 **32,768** tokens
+- **推理内容**：模型输出的 `reasoning_content` 会作为 DSH 的 reasoning 块正常显示
+- **工具调用**：DSH 的文件读取（`read`）、写文件（`write`）、编辑（`edit`）、跑命令（`bash`）
+  这些工具可用。DSH 内部工具名本来就是小写，插件的改名表按**大小写不敏感**匹配，
+  出站保证是 Zen 要求的精确小写拼写，入站还原成 DSH 的拼写
+- **流式输出**：Zen 只支持流式，插件内部强制 `stream: true`，DSH 侧看到的仍是正常流式
+
+### ⚠️ 工具门禁（Zen 的硬性要求，不是插件的限制）
+
+Zen 免费档要求**每次请求的 tools 数组里必须含小写 `read`**，否则 403。上游实测：
+
+| 声明了哪些工具 | 结果 |
+| --- | --- |
+| `read` + `bash` | 200 |
+| 只有 `read` | 200 |
+| 只有 `bash` | 403 |
+
+所以 `read` 是硬性必需，`bash` 可选。插件为了稳妥，**两个都缺就两个都补**：
+没声明哪个，就往上游的 tools 数组里补一个同名 placeholder（描述写「must never be called」）。
+模型如果真调了 placeholder，插件**丢弃该调用**，并把 `tool_calls` 的 finish 坍缩回 `stop`
+——你不会看到报错，只是那一轮没有工具调用发生。
+
+实际影响：**极少数情况下模型想读文件但那一轮工具没生效**，重发一次通常就好。
+
+### ❌ 不能用
+
+- **图片输入**：适配器声明的输入模态是 `['text']`（Zen 免费档这 10 个模型都不保证视觉能力）
+- **选推理等级**：见上文，菜单里没有这一项
+- **非 `read`/`bash` 工具的可用性无保证**：Zen 门禁只校验这两个名字是否**存在**，
+  其余工具名原样透传给上游，上游是否真的执行它们（web 搜索、MCP 工具等）本插件
+  既不拦截也不保证。**有实测证据的只有文件/命令类工具**（`read`/`bash` 这条链路，
+  `test/smoke2.mjs` 验证了双向改名 + 真实调用成功）；`web_search` 之类只验证了
+  「能声明、不破坏门禁」，没验证上游真的会执行它。
+
+---
+
+## 四、安装
+
+### 从 GitHub 装
+
+```bash
+# 1. 装进 profile
+cd C:\Users\MECHREV\.dsh\profiles\desktop
+pnpm add "dsh-opencodehub@github:ki11a-Conton/dsh-opencodehub"
+```
+
+然后在 profile 的 `package.json` 里，把 `"dsh-opencodehub"` 加进 `dsh.profile.bundles` 数组：
+
+```jsonc
+"dsh": {
+  "profile": {
+    "bundles": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-ai/dsh-web-app",
+      // ...
+      "dsh-opencodehub"        // ← 加这一行
+    ]
+  }
+}
+```
+
+重启 DSH。
+
+### 从本地目录装（开发用）
+
+```jsonc
+// profile 的 package.json
+"dependencies": {
+  "dsh-opencodehub": "file:D:/Download games/dsh插件/dsh-opencodehub"
+}
+```
+
+`dsh.profile.bundles` 里同样加 `"dsh-opencodehub"`，然后 `pnpm install --dir <profile 目录>`，重启 DSH。
+
+### 从 Release 压缩包装
+
+下载 [v0.1.2 的 zip](https://github.com/ki11a-Conton/dsh-opencodehub/releases)，解压到任意目录，
+然后按上面的「从本地目录装」把 `file:` 路径指过去。
+
+> **为什么装完要重启**：DSH 的补丁层（`cordis.patch.yml`）和 bundle 列表在启动时合成，
+> 不支持热更新。插件代码本身有热重载能力，但**首次注册**（让 `opencodehub` 出现在模型目录里）
+> 必须重启一次。
+
+---
+
+## 五、配置项（Config）
+
+全部有默认值，**零配置可用**。要改就在 profile 补丁层里按 id 覆盖（见上文代理一节）。
 
 | 字段 | 默认 | 说明（Go 原版对应） |
 | --- | --- | --- |
@@ -32,7 +242,13 @@
 | `retryBackoffMs` | `400` | 线性退避基数（400ms × attempt） |
 | `directoryTtlMs` | `600000` | `/zen/v1/models` 目录缓存 TTL |
 
-## 移植了什么（对应 Go 源）
+> **注意**：按 id 覆盖时 config 是**整体替换，不是深合并**（DSH 补丁层的规则）。但没写的键不会报错
+> ——它们会回落到 schema 里的 `.default()`。所以只写你要改的那一个键就够了。
+> 本插件的 config 只有上表这 8 个键，别把别的插件那套结构抄过来。
+
+---
+
+## 六、移植了什么（对应 Go 源）
 
 - **十头门禁**（zen.go）：`Accept-Encoding: identity`、`Content-Type`、`Content-Length`、
   `Authorization: Bearer public`、`User-Agent: opencode/latest/2.0.29/cli`、
@@ -54,7 +270,7 @@
 - **错误语义**：200 包错误对象、聚合不出内容、无 finish 的流均映射为带稳定 code 的 LlmError
   （AUTH/RATE_LIMIT/SERVER/TIMEOUT/TRANSPORT/EMPTY_RESPONSE…）。
 
-## 与原版的刻意偏差
+## 七、与原版的刻意偏差
 
 - **归因头**：dsh-llm 适配器契约要求每个上游请求带 `attributionHeaders()`（`user-agent:
   deepseek-harness/...`），但 Zen 以 UA 参与门禁指纹，发送会 403。本适配器按协议仿真优先，
@@ -63,18 +279,35 @@
   （无后台定时器，行为等价）。
 - **管理面板**：CPA 的只读管理页不移植；配置走 DSH 插件 Config schema。
 
-## 本机状态（2026-10-19）
+## 八、开发与验证
 
-- 已通过：`test/unit.mjs`（离线全绿，含 0.1.2 出口自愈四用例移植）、`test/smoke.mjs`（真实出流 OK）、
-  `test/smoke2.mjs`（真实工具调用回合，Read 门禁改名+参数流式）、`test/smoke3.mjs`（死代理 59999 →
-  拨号失败挂起 5 分钟 → 下一次直连成功出字，与 Go `TestProxyBlockExpires` 同型验证）。
-- 已安装进 desktop profile 并验证模块可加载；**待用户重启 DSH 后在 GUI 里确认模型选择器**。
-- 运行时依赖解析：`undici`、`@deepseek-ai/schemastery` 来自 profile hoisted node_modules；
-  `@deepseek-ai/cordis` 仅为 peerDep 声明，运行时不 import（DSH 无公开 cordis 运行时导出需求）。
+```bash
+# 离线单测（不发网络请求）
+node test/unit.mjs
+
+# 实弹：文本流（需要代理可用）
+node test/smoke.mjs
+
+# 实弹：工具调用回合（Read 门禁改名 + 参数流式）
+node test/smoke2.mjs
+
+# 实弹：死代理降级（拨号失败 → 挂起 → 直连成功）
+node test/smoke3.mjs
+```
+
+本机（2026-10-19）四个测试全部通过；已安装进 desktop profile 并验证 loader `phase=active`。
+
+运行时依赖解析：`undici`、`@deepseek-ai/schemastery` 来自 profile hoisted node_modules；
+`@deepseek-ai/cordis` 仅为 peerDep 声明，运行时不 import。
 
 ## 变更记录
 
 - **0.1.2（对齐上游 1e7eed54）**：出口被拒时自愈——403 FreeTierError 挂起代理 10 分钟改直连
   （无退避立即重试）；代理拨号失败挂起 5 分钟；目录拉取共享同一出口决策；`egressLabel()` 对应
-  Go `transportLabel`。版本号 `0.1.0` → `0.1.2`。
+  Go `transportLabel`。版本号 `0.1.0` → `0.1.2`。新增 `test/smoke3.mjs`。
 - **0.1.0**：初版移植（对齐上游 0.1.1 / d11b6e67）。
+
+## License
+
+MIT（见 `package.json`）。本插件是 [opencodehub](https://github.com/ki11a-Conton/opencodehub) 的移植，
+上游为同一作者的项目；协议复刻部分的实现细节均来自上游 Go 源码。
